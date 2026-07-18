@@ -1,0 +1,5 @@
+name: email_parser
+version: 0.1.0
+description: Dummy tool that stands in for parsing a forwarded email thread.
+provides_tools:
+  - parse_forwarded_email

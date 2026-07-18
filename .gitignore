@@ -1,0 +1,12 @@
+hermes_home/.env
+hermes_home/secrets/
+hermes_home/logs/
+hermes_home/sessions/
+hermes_home/memory/
+hermes_home/cache/
+__pycache__/
+*.pyc
+
+.env
+secrets/
+.claude
