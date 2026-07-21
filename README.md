@@ -65,14 +65,25 @@ My Questions
 - How to implement progressive disclosure of skills
 - How to implement context compression
 - How to implement testing with Hermes and evaluate the performance over time, is there a way I can fake acting as multiple different users
+- What is the difference between plugins and hooks?
+- How do I truly "call" the hermes agent if it lives in docker or cli? Do I have a custom python app on the server as well? IDK
 
 Google Cloud Setup (Is this possible to automate out of curiousity?)
 
 - Create Project
 - Enable Google Sheets API in the Project
 - Create Google Sheet and pull Sheet ID from the URL
-- Create Service User and add as editor to the sheet
+- Create Service User and add as editor to the sheet, create JSON key for service account user
 
 Stretch Goal
 
 - Have sheet with multiple spreadsheets on a per user basis
+
+NEXT STEPS
+
+1. Actually build hermes with a separate project and play around to understand what the heck is going on, watch some tutorials
+2. Learn how to play with locally, understanding how I would actually move this to production
+3. Get a model router in place(Pre-LLM call?), as well as security for adding skills
+4. Learn best testing frameworks for Hermes
+5. Get dashboard up and running
+6. Learn how to scale in terms of web users accessing the platform

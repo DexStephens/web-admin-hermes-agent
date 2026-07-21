@@ -4,3 +4,14 @@ delegation:
   child_timeout_seconds: 120
   orchestrator_enabled: true
   subagent_auto_approve: true
+gateway:
+  platforms:
+    telegram:
+      extra:
+        status_indicator: true
+        # Optional custom strings (defaults: "Online" / "Offline"):
+        status_online: "🟢 Online"
+        status_offline: "🔴 Offline"
+model:
+  provider: openrouter
+  default: ~google/gemini-flash-latest
