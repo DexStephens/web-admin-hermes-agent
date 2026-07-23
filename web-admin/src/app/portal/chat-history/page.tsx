@@ -1,13 +1,14 @@
 import Link from "next/link";
 import { hermesFetch } from "@/lib/hermes";
-import type { Session } from "@/lib/types";
+import type { Session, SessionsResponse } from "@/lib/types";
 
 export default async function ChatHistoryPage() {
   let sessions: Session[] = [];
   let error: string | null = null;
 
   try {
-    sessions = await hermesFetch<Session[]>("/api/sessions");
+    const data = await hermesFetch<SessionsResponse>("/api/sessions");
+    sessions = data.data;
   } catch (err) {
     error = err instanceof Error ? err.message : "Couldn't reach Hermes.";
   }

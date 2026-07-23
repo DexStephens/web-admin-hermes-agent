@@ -41,10 +41,10 @@ export default async function UsagePage() {
               <tbody>
                 {usage.daily.map((day) => (
                   <tr
-                    key={day.date}
+                    key={day.day}
                     className="border-t border-zinc-200 text-zinc-900 dark:border-zinc-800 dark:text-zinc-50"
                   >
-                    <td className="py-1.5">{day.date}</td>
+                    <td className="py-1.5">{day.day}</td>
                     <td className="py-1.5">{day.input_tokens}</td>
                     <td className="py-1.5">{day.output_tokens}</td>
                   </tr>
@@ -67,15 +67,19 @@ export default async function UsagePage() {
                 </tr>
               </thead>
               <tbody>
-                {usage.models.map((model) => (
+                {usage.by_model.map((model) => (
                   <tr
                     key={model.model}
                     className="border-t border-zinc-200 text-zinc-900 dark:border-zinc-800 dark:text-zinc-50"
                   >
                     <td className="py-1.5">{model.model}</td>
                     <td className="py-1.5">{model.sessions}</td>
-                    <td className="py-1.5">{model.tokens}</td>
-                    <td className="py-1.5">${model.cost.toFixed(2)}</td>
+                    <td className="py-1.5">
+                      {model.input_tokens + model.output_tokens}
+                    </td>
+                    <td className="py-1.5">
+                      ${model.estimated_cost.toFixed(2)}
+                    </td>
                   </tr>
                 ))}
               </tbody>

@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { hermesFetch } from "@/lib/hermes";
-import type { SessionMessage } from "@/lib/types";
+import type { SessionMessagesResponse } from "@/lib/types";
+import { groupMessagesIntoTrace, type TraceNode } from "@/lib/traceGrouping";
+import ChatTrace from "@/components/ChatTrace";
 
 export default async function SessionTranscriptPage({
   params,
@@ -9,13 +11,14 @@ export default async function SessionTranscriptPage({
 }) {
   const { id } = await params;
 
-  let messages: SessionMessage[] = [];
+  let trace: TraceNode[] = [];
   let error: string | null = null;
 
   try {
-    messages = await hermesFetch<SessionMessage[]>(
+    const data = await hermesFetch<SessionMessagesResponse>(
       `/api/sessions/${id}/messages`
     );
+    trace = groupMessagesIntoTrace(data.data);
   } catch (err) {
     error = err instanceof Error ? err.message : "Couldn't reach Hermes.";
   }
@@ -37,21 +40,13 @@ export default async function SessionTranscriptPage({
         <p className="mt-4 text-sm text-red-600 dark:text-red-400">{error}</p>
       )}
 
-      <div className="mt-6 flex flex-col gap-3">
-        {messages.map((message, index) => (
-          <div
-            key={index}
-            className="rounded-md border border-zinc-200 bg-white p-3 text-sm dark:border-zinc-800 dark:bg-zinc-900"
-          >
-            <span className="font-medium text-zinc-500 dark:text-zinc-400">
-              {message.role}
-            </span>
-            <p className="mt-1 whitespace-pre-wrap text-zinc-900 dark:text-zinc-50">
-              {message.content}
-            </p>
-          </div>
-        ))}
-      </div>
+      {!error && trace.length === 0 && (
+        <p className="mt-4 text-sm text-zinc-500 dark:text-zinc-400">
+          No messages yet.
+        </p>
+      )}
+
+      {!error && trace.length > 0 && <ChatTrace trace={trace} />}
     </div>
   );
 }

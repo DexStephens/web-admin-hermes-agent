@@ -22,7 +22,7 @@ Agent Requirements
 - Model Routing: use gemini 2.5 flash for simple tasks and escalate to sonnet 4.6/opus 4.6 for complex reasoning
 - Sub-Agent 1: GHL CRM: sub agent that uses GHL API endpoints to update contact records and manage CRM data
 - Sub-agent 2: Book keeping: sub-agent that extracts data from a receipt image, asks clarifying questions, and appends the categorized data to a google sheet via api
-- Sub-agent 3: Conecpt: propose 1 additional useful sub-agent specifically designed to benefit small business owners
+- Sub-agent 3: Concept: propose 1 additional useful sub-agent specifically designed to benefit small business owners
 
 User story
 
@@ -37,26 +37,6 @@ User story
 9. As a system admin, I want dynamic routing via OpenRouter to save costs on simple tasks. -> Ask a basic math question, then ask a complex logic question. -> Logs confirm the first request used Gemini Flash and the second escalated to Sonnet/Opus.
 10. As a system admin, I want a GHL sub-agent to automatically update my CRM. -> Tell the agent via Telegram: "Update John Doe's phone number to 555-0199". -> Agent uses the GHL API to locate the contact and update the field.
 11. As an owner, I want to understand the developer's technical capabilities and problem-solving approach. -> Attend the 30-60 min live handoff call at the end of the 14 days. -> Developer clearly walks through the code, explains their architecture, and articulates how they overcame challenges. -> Validates communication and technical depth.
-
-Order of Tasks/Time Expected
-
-- Get telegram account
-- Admin UI (2 hours)
-  Dashboard to look at agent's activity: aka chat history and settings
-  View API usage and chat logs to monitor costs and interactions
-  Add or remove skills visually without touching code
-- Get Hermes agent created with an email address
-- Create book keeping sub agent
-- Create GHL sub agent
-- Get telegram bot created and connected to hermes agent
-- Create security around skill addition
-
-Questions for Nate
-
-- Further context into the client meals idea, example receipts??
-- Should system admin talk with agent via telegram be through user UI or admin UI
-- API Keys, understand the GHL environment, if I can access it and create records
-- Is GHL MCP alright, do I need an API key here as well?
 
 My Questions
 
@@ -81,9 +61,13 @@ Stretch Goal
 
 NEXT STEPS
 
-1. Actually build hermes with a separate project and play around to understand what the heck is going on, watch some tutorials
-2. Learn how to play with locally, understanding how I would actually move this to production
-3. Get a model router in place(Pre-LLM call?), as well as security for adding skills
-4. Learn best testing frameworks for Hermes
-5. Get dashboard up and running
-6. Learn how to scale in terms of web users accessing the platform
+1. Get hermes bundled to a docker container to reduce all the cli issues I am running into, understand the deployment, how to rerun after changes, etc.
+2. Get the MCP for GHL setup and working successfully
+3. Build the email parser
+4. Ability to add skills
+5. Ability to toggle skills
+6. Block malicious skill adding
+7. Dynamic model routing
+8. Understand message compaction, and how history works
+9. Deploy to a live URL, setup via terraform on digital ocean
+10. How do we dynacmially add new people to the telegram allowed users list?
