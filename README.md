@@ -71,3 +71,7 @@ NEXT STEPS
 8. Understand message compaction, and how history works
 9. Deploy to a live URL, setup via terraform on digital ocean
 10. How do we dynacmially add new people to the telegram allowed users list?
+
+ISSUES
+
+- Memory not updating mid session, only on session recompaction. Aka /new. How are other ways to do this outside of a memory provider?

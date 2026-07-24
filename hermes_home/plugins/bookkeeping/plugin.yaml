@@ -2,6 +2,7 @@ name: bookkeeping
 version: 0.1.0
 description: Appends extracted receipt data (vendor, amount, category) to a Google Sheet.
 provides_tools:
+  - extract_receipt
   - log_receipt
 requires_env:
   - GOOGLE_SERVICE_ACCOUNT_FILE

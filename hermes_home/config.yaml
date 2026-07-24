@@ -57,3 +57,7 @@ mcp_servers:
       Authorization: Bearer ${MCP_GHL_API_KEY}
       locationId: "${GHL_LOCATION_ID}"
     enabled: true
+memory:
+  provider: honcho
+approvals:
+  destructive_slash_confirm: false
