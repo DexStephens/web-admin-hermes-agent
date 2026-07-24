@@ -37,3 +37,9 @@ secrets/
 
 # direnv
 .direnv/
+
+# terraform
+terraform/.terraform/
+terraform/*.tfstate
+terraform/*.tfstate.*
+terraform/*.tfvars

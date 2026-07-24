@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Local single-container dev/testing only. Production deploys use docker-compose.yml.
 set -euo pipefail
 
 CONTAINER_NAME=hermes

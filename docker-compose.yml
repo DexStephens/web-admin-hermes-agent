@@ -1,0 +1,37 @@
+services:
+  nginx:
+    image: nginx:1.27-alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
+    depends_on:
+      - web-admin
+
+  web-admin:
+    build:
+      context: ./web-admin
+    restart: unless-stopped
+    expose:
+      - "3000"
+    environment:
+      - HERMES_DASHBOARD_URL=http://hermes:8642
+      - HERMES_DASHBOARD_TOKEN=${API_SERVER_KEY}
+    depends_on:
+      - hermes
+
+  hermes:
+    image: nousresearch/hermes-agent:v2026.7.20
+    restart: unless-stopped
+    command: gateway run
+    expose:
+      - "8642"
+    shm_size: "1gb"
+    volumes:
+      - ./hermes_home:/opt/data
+      - /var/run/docker.sock:/var/run/docker.sock
+    env_file:
+      - ./hermes_home/.env
+    group_add:
+      - "${DOCKER_GID}"
