@@ -16,8 +16,9 @@ services:
     expose:
       - "3000"
     environment:
-      - HERMES_DASHBOARD_URL=http://hermes:8642
-      - HERMES_DASHBOARD_TOKEN=${API_SERVER_KEY}
+      - HERMES_DASHBOARD_URL=http://hermes:9119
+      - HERMES_DASHBOARD_USERNAME=${HERMES_DASHBOARD_BASIC_AUTH_USERNAME}
+      - HERMES_DASHBOARD_PASSWORD=${HERMES_DASHBOARD_BASIC_AUTH_PASSWORD}
     depends_on:
       - hermes
 
@@ -27,6 +28,7 @@ services:
     command: gateway run
     expose:
       - "8642"
+      - "9119"
     shm_size: "1gb"
     volumes:
       - ./hermes_home:/opt/data

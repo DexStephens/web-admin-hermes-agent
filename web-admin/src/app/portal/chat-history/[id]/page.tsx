@@ -18,7 +18,7 @@ export default async function SessionTranscriptPage({
     const data = await hermesFetch<SessionMessagesResponse>(
       `/api/sessions/${id}/messages`
     );
-    trace = groupMessagesIntoTrace(data.data);
+    trace = groupMessagesIntoTrace(data.messages);
   } catch (err) {
     error = err instanceof Error ? err.message : "Couldn't reach Hermes.";
   }

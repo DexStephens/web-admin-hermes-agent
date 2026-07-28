@@ -1,7 +1,8 @@
-// Shapes verified against a live `hermes-agent` API server instance
-// (gateway/platforms/api_server.py's _session_response/_message_response),
-// not the separate dashboard web_server.py — the two return different
-// envelopes for what look like the same paths. (2026-07-21)
+// Shapes verified against the dashboard (hermes_cli/web_server.py)
+// GET /api/sessions and GET /api/sessions/{id}/messages handlers, which
+// hermesFetch actually talks to. gateway/platforms/api_server.py returns a
+// different {object, data} envelope for what look like the same paths —
+// don't cross-reference it here. (2026-07-26)
 
 export interface Session {
   id: string;
@@ -17,8 +18,10 @@ export interface Session {
 }
 
 export interface SessionsResponse {
-  object: string;
-  data: Session[];
+  sessions: Session[];
+  total: number;
+  limit: number;
+  offset: number;
 }
 
 export interface HermesToolCall {
@@ -53,9 +56,13 @@ export interface HermesMessage {
 }
 
 export interface SessionMessagesResponse {
-  object: string;
   session_id: string;
-  data: HermesMessage[];
+  messages: HermesMessage[];
+  pagination: {
+    limit: number | null;
+    offset: number;
+    returned: number;
+  };
 }
 
 export interface UsageDay {
@@ -80,5 +87,37 @@ export interface UsageResponse {
 export interface Skill {
   name: string;
   description?: string;
+  category?: string;
   enabled: boolean;
+  provenance?: "hub" | "bundled" | "agent";
+}
+
+export interface SkillContent {
+  name: string;
+  content: string;
+  path: string;
+}
+
+// Pending entries only show a truncated hash of the real pairing code
+// (gateway/pairing.py keeps codes hashed at rest) — it's a reference for
+// matching against what the user tells you out-of-band, not the value to
+// submit. Approving requires the real code, typed in separately.
+export interface PendingPairing {
+  platform: string;
+  code: string;
+  user_id: string;
+  user_name: string;
+  age_minutes: number;
+}
+
+export interface ApprovedPairing {
+  platform: string;
+  user_id: string;
+  user_name?: string;
+  approved_at: number;
+}
+
+export interface PairingList {
+  pending: PendingPairing[];
+  approved: ApprovedPairing[];
 }

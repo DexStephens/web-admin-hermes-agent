@@ -59,6 +59,35 @@ REMOTE
 echo "==> Fixing hermes_home ownership (container runs as uid $HERMES_UID; rsync leaves it owned by your local user)..."
 ssh_do "chown -R $HERMES_UID:$HERMES_UID $REMOTE_DIR/hermes_home"
 
+echo "==> Linking /opt/data -> hermes_home on the droplet host (docker-outside-of-docker mount fix)..."
+echo "    Hermes's docker terminal backend builds sandbox bind-mount paths (skills, cache,"
+echo "    sandbox home) from its internal HERMES_HOME (/opt/data). It spawns sibling sandbox"
+echo "    containers via the docker.sock mount, so the HOST's real Docker daemon needs"
+echo "    /opt/data to resolve to something real -- otherwise every execute_code/terminal"
+echo "    call inside a sandbox fails, or (worse, on Linux) silently mounts an empty dir."
+ssh_do bash -s <<REMOTE
+set -euo pipefail
+target="$REMOTE_DIR/hermes_home"
+if [ -L /opt/data ]; then
+  current="\$(readlink -f /opt/data)"
+  expected="\$(readlink -f "\$target")"
+  if [ "\$current" != "\$expected" ]; then
+    echo "  /opt/data symlink points elsewhere (\$current) -- relinking"
+    rm /opt/data
+    ln -s "\$target" /opt/data
+  else
+    echo "  /opt/data already linked correctly"
+  fi
+elif [ -e /opt/data ]; then
+  echo "  ERROR: /opt/data exists and is not a symlink -- refusing to overwrite" >&2
+  exit 1
+else
+  mkdir -p /opt
+  ln -s "\$target" /opt/data
+  echo "  Linked /opt/data -> \$target"
+fi
+REMOTE
+
 echo "==> Bringing up the stack..."
 ssh_do "cd $REMOTE_DIR && docker compose up -d --build"
 

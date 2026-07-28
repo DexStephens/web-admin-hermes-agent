@@ -15,7 +15,11 @@ start() {
       --name "$CONTAINER_NAME" \
       --restart unless-stopped \
       -v "$HOST_DIR:/opt/data" \
+      -v /var/run/docker.sock:/var/run/docker.sock \
+      --group-add "$(stat -f '%g' /var/run/docker.sock)" \
+      --env-file "$HOST_DIR/.env" \
       -p 8642:8642 \
+      -p 9119:9119 \
       "$IMAGE" gateway run
   fi
 }

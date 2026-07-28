@@ -75,3 +75,4 @@ NEXT STEPS
 ISSUES
 
 - Memory not updating mid session, only on session recompaction. Aka /new. How are other ways to do this outside of a memory provider?
+- Can also do /learn to create a new skill via chat, is this monitored for security?

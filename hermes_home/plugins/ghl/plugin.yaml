@@ -1,5 +1,0 @@
-name: ghl
-version: 0.1.0
-description: Dummy tool that stands in for updating a GoHighLevel CRM contact.
-provides_tools:
-  - ghl_update_contact

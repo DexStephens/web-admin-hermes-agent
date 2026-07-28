@@ -5,6 +5,7 @@ const NAV_ITEMS = [
   { label: "Chat History", href: "/portal/chat-history" },
   { label: "API Usage", href: "/portal/usage" },
   { label: "Skills", href: "/portal/skills" },
+  { label: "Pairing", href: "/portal/pairing" },
 ];
 
 export default function Sidebar() {
