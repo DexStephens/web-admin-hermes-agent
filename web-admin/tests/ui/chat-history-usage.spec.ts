@@ -1,10 +1,15 @@
 import { test, expect } from "@playwright/test";
+import { loginAsAdmin } from "../helpers/login";
 
 // STORY-UI2: As an admin, I want to view API usage and chat logs to
 // monitor costs and interactions. Acceptance: readable history of all
 // chats, and a metric of LLM tokens/costs used.
 
 test.describe("STORY-UI2: chat history and API usage", () => {
+  test.beforeEach(async ({ page }) => {
+    await loginAsAdmin(page);
+  });
+
   test("Chat History shows a readable list of sessions", async ({ page }) => {
     const response = await page.goto("/portal/chat-history");
     expect(response?.ok()).toBeTruthy();

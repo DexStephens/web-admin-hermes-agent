@@ -26,6 +26,15 @@ export default function Sidebar() {
           </Link>
         ))}
       </nav>
+
+      <form action="/api/logout" method="POST" className="mt-auto pt-4">
+        <button
+          type="submit"
+          className="w-full rounded-md px-2 py-1.5 text-left text-sm font-medium text-zinc-500 hover:bg-zinc-100 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-900 dark:hover:text-zinc-50"
+        >
+          Log out
+        </button>
+      </form>
     </aside>
   );
 }

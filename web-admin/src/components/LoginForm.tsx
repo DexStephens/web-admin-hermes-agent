@@ -3,21 +3,25 @@
 import { useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 
-const DEMO_USERNAME = "demo";
-const DEMO_PASSWORD = "demo";
-
 export default function LoginForm() {
   const router = useRouter();
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
 
-  function handleSubmit(event: FormEvent<HTMLFormElement>) {
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    setError("");
 
-    if (username === DEMO_USERNAME && password === DEMO_PASSWORD) {
-      setError("");
+    const response = await fetch("/api/login", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ username, password }),
+    });
+
+    if (response.ok) {
       router.push("/portal");
+      router.refresh();
       return;
     }
 

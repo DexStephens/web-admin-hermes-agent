@@ -2,6 +2,13 @@ import { hermesFetch } from "@/lib/hermes";
 import type { Skill } from "@/lib/types";
 import SkillsList from "@/components/SkillsList";
 
+// No searchParams/dynamic route params to force per-request rendering, so
+// without this, `next build` prerenders the page once (with no runtime env
+// vars available at build time) and freezes whatever hermesFetch's error
+// was at that moment into the static output forever, regardless of the
+// container's actual env vars at request time.
+export const dynamic = "force-dynamic";
+
 export default async function SkillsPage() {
   let skills: Skill[] = [];
   let error: string | null = null;

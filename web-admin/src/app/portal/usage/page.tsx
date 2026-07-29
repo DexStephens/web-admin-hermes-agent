@@ -1,15 +1,43 @@
+import Link from "next/link";
 import { hermesFetch } from "@/lib/hermes";
 import type { UsageResponse } from "@/lib/types";
 
-export default async function UsagePage() {
+// See the comment in ../skills/page.tsx -- without this, next build bakes a
+// build-time (env-var-less) hermesFetch error into a static shell forever.
+export const dynamic = "force-dynamic";
+
+// The backend has no dedicated "all time" mode -- /api/analytics/usage just
+// takes `days` and filters `started_at > now - days*86400`. A large-enough
+// day count (no max is enforced server-side) covers any real deployment's
+// history, so it doubles as "all time" without needing a backend change.
+const ALL_TIME_DAYS = 36500;
+
+export default async function UsagePage({
+  searchParams,
+}: {
+  searchParams: Promise<{ range?: string }>;
+}) {
+  const { range } = await searchParams;
+  const isAllTime = range === "all";
+  const days = isAllTime ? ALL_TIME_DAYS : 30;
+
   let usage: UsageResponse | null = null;
   let error: string | null = null;
 
   try {
-    usage = await hermesFetch<UsageResponse>("/api/analytics/usage?days=30");
+    usage = await hermesFetch<UsageResponse>(
+      `/api/analytics/usage?days=${days}`
+    );
   } catch (err) {
     error = err instanceof Error ? err.message : "Couldn't reach Hermes.";
   }
+
+  const tabClass = (active: boolean) =>
+    `rounded-md px-3 py-1.5 text-sm font-medium ${
+      active
+        ? "bg-zinc-900 text-white dark:bg-zinc-50 dark:text-zinc-900"
+        : "text-zinc-600 hover:bg-zinc-100 dark:text-zinc-400 dark:hover:bg-zinc-900"
+    }`;
 
   return (
     <div>
@@ -17,8 +45,18 @@ export default async function UsagePage() {
         API Usage
       </h1>
       <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
-        Last 30 days, from Hermes&apos;s own usage tracking.
+        {isAllTime ? "All time" : "Last 30 days"}, from Hermes&apos;s own
+        usage tracking.
       </p>
+
+      <div className="mt-4 flex gap-1">
+        <Link href="/portal/usage" className={tabClass(!isAllTime)}>
+          Last 30 days
+        </Link>
+        <Link href="/portal/usage?range=all" className={tabClass(isAllTime)}>
+          All time
+        </Link>
+      </div>
 
       {error && (
         <p className="mt-4 text-sm text-red-600 dark:text-red-400">{error}</p>

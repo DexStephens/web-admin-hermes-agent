@@ -1,78 +1,104 @@
 # web-admin-hermes-agent
 
-You have exactly 2 weeks (14 days) to build and deploy a functional multi-agent AI assistant using the Hermes framework, accompanied by a user-friendly web dashboard. This test evaluates your understanding of agentic workflows, multi-channel I/O, vision models, UI development, system security, and your ability to ship working software. Upon accepting this contract, we will immediately schedule a 30-60 minute project review call to take place at the end of your 2-week period.
+A multi-agent AI assistant built on the [Hermes](https://github.com/NousResearch/Hermes) agent framework (Telegram + email I/O, GHL CRM and bookkeeping sub-agents, persistent memory) paired with a Next.js admin portal for non-technical operators, deployed to a single DigitalOcean droplet via Terraform + Docker Compose.
 
-Provided:
+See [DEPLOYMENT.md](./DEPLOYMENT.md) for the full architecture diagram and a step-by-step walkthrough of `terraform apply` → `./deploy.sh` → a running stack.
 
-- openrouter api token
-- GHL sub-account and api token
+## Overview
 
-Key Requirement
+The repo is three pieces glued together by `docker-compose.yml`:
 
-- Live, deployed to the cloud
-- Github repo with deployment documentation
-- Brief document outlining 3rd proposed sub-agent for small businesses
+### `web-admin/` — the portal
 
-Agent Requirements
+A Next.js app (source in this repo, built into its own container) that gives non-technical admins a UI for chat history, API usage/cost tracking, and toggling Hermes skills on/off. It has its own portal login (`demo` / `demo` today — see [LoginForm.tsx](web-admin/src/components/LoginForm.tsx)) backed by a signed session cookie ([src/lib/auth.ts](web-admin/src/lib/auth.ts)) and enforced by [src/proxy.ts](web-admin/src/proxy.ts) on every `/portal/*` and relevant `/api/*` route. Once logged in, it authenticates _again_, server-side, against the Hermes dashboard (`/api/login`, `/api/logout` call out to hermes with `HERMES_DASHBOARD_USERNAME`/`PASSWORD`) so it can call the dashboard's `/api/skills*` and usage endpoints on the user's behalf — the browser never sees the Hermes credentials.
 
-- Strict Communication SLAs: must respond to telegram messages in real-time, must parse and reply to forwarded email threads in 15 mins or less. Architect my own email parsing/sending solution
-- Web Admin Portal: user-friendly web ui for non-technical users to view chat histories, track API usage/costs, and add/remove Hermes skills. Any tech stack I prefer
-- Hermes Skill Vetting: security mechanism that automatically vets and prevents malicious skills from being downloaded or executed by the hermes instance
-- Persistent memoty: maintain long-term memory of previous interactions without context window compaction issues
-- Model Routing: use gemini 2.5 flash for simple tasks and escalate to sonnet 4.6/opus 4.6 for complex reasoning
-- Sub-Agent 1: GHL CRM: sub agent that uses GHL API endpoints to update contact records and manage CRM data
-- Sub-agent 2: Book keeping: sub-agent that extracts data from a receipt image, asks clarifying questions, and appends the categorized data to a google sheet via api
-- Sub-agent 3: Concept: propose 1 additional useful sub-agent specifically designed to benefit small business owners
+### `hermes_home/` — the agent's persistent state
 
-User story
+Bind-mounted into the `hermes` container at `/opt/data`, this directory _is_ the agent's identity: `config.yaml`, skills, memories, chat/kanban databases, cron jobs, and `secrets/`. The container itself is disposable (pinned to `nousresearch/hermes-agent:v2026.7.20`) and can be rebuilt or replaced at will — nothing persists inside it. Two deliberate edits were made to `hermes_home/config.yaml` for this specific droplet: GPU args were removed (no GPU on the box) and per-sandbox memory/disk limits were lowered so a spawned sub-agent sandbox can't request more RAM/disk than the droplet actually has.
 
-1. As a user, I want instant replies on Telegram so the chat feels natural. -> Send a message to the deployed Telegram bot. -> Assistant replies via Telegram with its persona introduction instantaneously. -> Tests real-time webhook/polling.
-2. As a user, I want to forward an email to the assistant and have it reply in the thread quickly. -> Forward an existing email thread to the agent's email address. -> Assistant parses the context and replies directly to the thread in < 15 minutes.
-3. As a user, I want the assistant to remember my previous messages over time. -> 1. Tell assistant a fact. 2. Send 20+ unrelated messages. 3. Ask about the fact. -> Assistant correctly answers the fact without token limit or compaction errors. -> Tests memory persistence.
-4. As a user, I want a Bookkeeping sub-agent to process receipt images and log them to Google Sheets. -> Send a receipt photo via Telegram. Reply with "Client Meals" when asked for the category. -> Agent extracts Amount/Vendor, asks for the category, and successfully appends a new row to the Google Sheet. -> Tests Vision LLM capabilities and Sheets API.
-5. As an admin, I want a web dashboard to monitor the agent's activity. -> Log into the provided Admin Web Portal URL. -> Dashboard loads successfully, displaying clear navigation for chat history and settings. -> Must be non-technical friendly.
-6. As an admin, I want to view API usage and chat logs to monitor costs and interactions. -> Navigate to the Chat History and API Usage tabs in the portal. -> Shows a readable history of all chats and a metric of LLM tokens/costs used.
-7. As an admin, I want to add or remove skills visually without touching code. -> Toggle a specific skill off in the portal, then ask the bot to use it. -> The bot refuses or fails to use the skill because it was disabled via the UI. -> Tests dynamic skill loading.
-8. As a system admin, I want to prevent malicious skills from compromising my server. -> Attempt to add a mock skill containing an unauthorized os.system command. -> The vetting system flags the code as malicious, blocks the installation, and logs the event. -> Crucial security check.
-9. As a system admin, I want dynamic routing via OpenRouter to save costs on simple tasks. -> Ask a basic math question, then ask a complex logic question. -> Logs confirm the first request used Gemini Flash and the second escalated to Sonnet/Opus.
-10. As a system admin, I want a GHL sub-agent to automatically update my CRM. -> Tell the agent via Telegram: "Update John Doe's phone number to 555-0199". -> Agent uses the GHL API to locate the contact and update the field.
-11. As an owner, I want to understand the developer's technical capabilities and problem-solving approach. -> Attend the 30-60 min live handoff call at the end of the 14 days. -> Developer clearly walks through the code, explains their architecture, and articulates how they overcame challenges. -> Validates communication and technical depth.
+### `terraform/` — the droplet and network perimeter
 
-My Questions
+Provisions the DigitalOcean side only: the droplet (`main.tf`), a firewall allowing inbound `22`/`80` and nothing else (`digitalocean_firewall.app`), and `cloud-init.yaml` to install Docker on first boot. It does **not** touch application secrets or ship code — that's `deploy.sh`'s job (`rsync` + writing a top-level `.env` + `chown` fixes + `docker compose up`).
 
-- Which way do I surface the agent? CLI, Gateway, cron, batch, API
-- How do I make sure the hermes agent can update skills over time (skills + memory + persona) How can we tie user behavior through the telegram allowed users
-- How to implement progressive disclosure of skills
-- How to implement context compression
-- How to implement testing with Hermes and evaluate the performance over time, is there a way I can fake acting as multiple different users
-- What is the difference between plugins and hooks?
-- How do I truly "call" the hermes agent if it lives in docker or cli? Do I have a custom python app on the server as well? IDK
+Once the droplet exists, `nginx` is the only container with a published port; it reverse-proxies `:80` to `web-admin:3000`, which in turn calls `hermes:9119` (dashboard) and `hermes:8642` (messaging/session API) over Compose's internal network.
 
-Google Cloud Setup (Is this possible to automate out of curiousity?)
+## Environment variables
 
-- Create Project
-- Enable Google Sheets API in the Project
-- Create Google Sheet and pull Sheet ID from the URL
-- Create Service User and add as editor to the sheet, create JSON key for service account user
+There are **four separate `.env`-shaped files**, at four different levels, each feeding a different part of the pipeline. Missing or misplaced values here are the single most common cause of "it deployed but X is broken."
 
-Stretch Goal
+| Level | File                                                                                                 | Loaded by                                                    | Purpose                                                                           |
+| ----- | ---------------------------------------------------------------------------------------------------- | ------------------------------------------------------------ | --------------------------------------------------------------------------------- |
+| 1     | `terraform/terraform.tfvars` (gitignored)                                                            | `terraform plan`/`apply`                                     | The DigitalOcean API token                                                        |
+| 2     | `.env` next to `deploy.sh` (gitignored, copy `.env.example` if present)                              | `deploy.sh` itself, on your laptop                           | The plaintext Hermes dashboard password, so you don't retype it every deploy      |
+| 3     | `hermes_home/.env` (gitignored, lives on the droplet / in your local `hermes_home/`)                 | Docker Compose's `env_file:` for the `hermes` container only | All of the agent's third-party secrets                                            |
+| 4     | top-level `/opt/app/.env` on the droplet (gitignored; **written by `deploy.sh`**, not hand-authored) | Compose's `${...}` interpolation in `docker-compose.yml`     | Bridges values from file 3 into the rest of the stack                             |
+| —     | `web-admin/.env.local` (gitignored, local dev only)                                                  | `next dev`                                                   | Lets you run the portal against a local or remote Hermes dashboard without Docker |
 
-- Have sheet with multiple spreadsheets on a per user basis
+### 1. `terraform/terraform.tfvars`
 
-NEXT STEPS
+```
+do_token = "..."
+```
 
-1. Get hermes bundled to a docker container to reduce all the cli issues I am running into, understand the deployment, how to rerun after changes, etc.
-2. Get the MCP for GHL setup and working successfully
-3. Build the email parser
-4. Ability to add skills
-5. Ability to toggle skills
-6. Block malicious skill adding
-7. Dynamic model routing
-8. Understand message compaction, and how history works
-9. Deploy to a live URL, setup via terraform on digital ocean
-10. How do we dynacmially add new people to the telegram allowed users list?
+Only key required: `do_token` (your DigitalOcean API token). Everything else Terraform needs (region, droplet size, image, SSH key name) has a default in `variables.tf`.
 
-ISSUES
+### 2. `.env` next to `deploy.sh`
 
-- Memory not updating mid session, only on session recompaction. Aka /new. How are other ways to do this outside of a memory provider?
-- Can also do /learn to create a new skill via chat, is this monitored for security?
+```
+HERMES_DASHBOARD_PASSWORD=...
+```
+
+`hermes_home/.env` only stores this password's scrypt hash (`HERMES_DASHBOARD_BASIC_AUTH_PASSWORD_HASH`) — it can't be reversed to log in. `deploy.sh` needs the real plaintext value to write file 4 below. You can also pass it inline instead: `HERMES_DASHBOARD_PASSWORD=... ./deploy.sh`.
+
+### 3. `hermes_home/.env`
+
+This is the agent's actual secrets file, injected only into the `hermes` container:
+
+```
+API_SERVER_ENABLED=
+API_SERVER_HOST=
+API_SERVER_KEY=                        # bearer token for the :8642 messaging/session API
+BOOKKEEPING_SPREADSHEET_ID=            # Google Sheet the bookkeeping sub-agent appends to
+GHL_LOCATION_ID=
+GOOGLE_SERVICE_ACCOUNT_FILE=           # path to secrets/ JSON key, mounted alongside this file
+HERMES_DASHBOARD=                      # enables the :9119 dashboard (skills/usage UI backend)
+HERMES_DASHBOARD_BASIC_AUTH_PASSWORD_HASH=
+HERMES_DASHBOARD_BASIC_AUTH_SECRET=
+HERMES_DASHBOARD_BASIC_AUTH_USERNAME=
+HONCHO_API_KEY=                        # persistent memory provider
+MCP_GHL_API_KEY=                       # GHL CRM sub-agent
+NYLAS_API_KEY=                         # email parsing/sending
+NYLAS_GRANT_ID=
+OPENROUTER_API_KEY=                    # model routing (Gemini Flash / Sonnet / Opus)
+TELEGRAM_BOT_TOKEN=
+TERMINAL_ENV=
+```
+
+`chmod 600` this file — it never goes through git or Terraform state, only `rsync`.
+
+### 4. top-level `/opt/app/.env`
+
+Written automatically by `deploy.sh` (steps: grab `DOCKER_GID` and the dashboard username/API key from file 3, append the plaintext password from file 2, reuse or generate a `PORTAL_SESSION_SECRET`). Do **not** author this by hand unless you're debugging — a stale or incomplete copy silently breaks things: empty `${DOCKER_GID}` means the sandbox terminal tool can't touch the Docker socket, empty dashboard credentials mean web-admin's `/api/skills*` calls all 401, and a missing `PORTAL_SESSION_SECRET` makes the portal login throw on every attempt — which `LoginForm.tsx` swallows into a generic "Invalid username or password" regardless of what you typed:
+
+```
+DOCKER_GID=...
+API_SERVER_KEY=...
+HERMES_DASHBOARD_BASIC_AUTH_USERNAME=...
+HERMES_DASHBOARD_BASIC_AUTH_PASSWORD=...
+PORTAL_SESSION_SECRET=...
+```
+
+`deploy.sh` reuses whatever `PORTAL_SESSION_SECRET` is already on the droplet across redeploys (only generating a new one the first time), so existing portal sessions aren't invalidated on every push.
+
+### `web-admin/.env.local` (local dev only)
+
+Only needed if you're running the portal outside Docker (`npm run dev`):
+
+```
+HERMES_DASHBOARD_URL=http://localhost:9119   # defaults to this if unset
+HERMES_DASHBOARD_USERNAME=
+HERMES_DASHBOARD_PASSWORD=
+PORTAL_SESSION_SECRET=                       # generate with: openssl rand -base64 32
+```
+
+`PORTAL_SESSION_SECRET` signs the portal's own login session cookie (separate from the Hermes dashboard credentials above) — the app throws on startup if it's missing.

@@ -2,6 +2,10 @@ import { hermesFetch } from "@/lib/hermes";
 import type { PairingList } from "@/lib/types";
 import PairingPanel from "@/components/PairingPanel";
 
+// See the comment in ../skills/page.tsx -- without this, next build bakes a
+// build-time (env-var-less) hermesFetch error into a static shell forever.
+export const dynamic = "force-dynamic";
+
 export default async function PairingPage() {
   let pairing: PairingList = { pending: [], approved: [] };
   let error: string | null = null;

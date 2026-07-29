@@ -1,5 +1,6 @@
 import { test, expect } from "@playwright/test";
 import { hermesChat } from "../helpers/hermesCli";
+import { loginAsAdmin } from "../helpers/login";
 
 // STORY-UI3: As an admin, I want to add or remove skills visually without
 // touching code. Acceptance: toggle a skill off in the portal, then ask
@@ -21,6 +22,10 @@ import { hermesChat } from "../helpers/hermesCli";
 const TARGET_SKILL = "ascii-art";
 
 test.describe("STORY-UI3: disabling a skill via the portal actually disables it", () => {
+  test.beforeEach(async ({ page }) => {
+    await loginAsAdmin(page);
+  });
+
   test.afterEach(async ({ page }) => {
     // Always leave the skill re-enabled, even if an assertion above failed.
     await page.goto("/portal/skills");

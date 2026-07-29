@@ -5,16 +5,40 @@
 # mount, and bring the stack up.
 #
 # Usage: ./deploy.sh
+# Reads defaults (HERMES_DASHBOARD_PASSWORD, etc.) from a gitignored .env
+# next to this script, if present -- see .env.example. A value already set
+# in the environment (e.g. HERMES_DASHBOARD_PASSWORD=... ./deploy.sh) wins
+# over the file either way.
 # Override the SSH key with: SSH_KEY=/path/to/key ./deploy.sh
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+# Only consult the file for a var that wasn't already passed in explicitly --
+# an explicit HERMES_DASHBOARD_PASSWORD=... ./deploy.sh always wins.
+if [[ -z "${HERMES_DASHBOARD_PASSWORD:-}" && -f "$SCRIPT_DIR/.env" ]]; then
+  set -a
+  # shellcheck disable=SC1091
+  source "$SCRIPT_DIR/.env"
+  set +a
+fi
+
 SSH_KEY="${SSH_KEY:-$HOME/.ssh/digital-ocean-droplet}"
+HERMES_DASHBOARD_PASSWORD="${HERMES_DASHBOARD_PASSWORD:-}"
 REMOTE_DIR="/opt/app"
 HERMES_UID=10000
 
 if [[ ! -f "$SSH_KEY" ]]; then
   echo "SSH key not found at $SSH_KEY (set SSH_KEY to override)" >&2
+  exit 1
+fi
+
+if [[ -z "$HERMES_DASHBOARD_PASSWORD" ]]; then
+  echo "HERMES_DASHBOARD_PASSWORD is not set." >&2
+  echo "hermes_home/.env only stores the dashboard password's scrypt hash" >&2
+  echo "(HERMES_DASHBOARD_BASIC_AUTH_PASSWORD_HASH), not the plaintext -- web-admin" >&2
+  echo "needs the real password to log in to the dashboard. Set it:" >&2
+  echo "  HERMES_DASHBOARD_PASSWORD=... ./deploy.sh" >&2
   exit 1
 fi
 
@@ -41,20 +65,40 @@ rsync -avz -e "ssh ${SSH_OPTS[*]}" \
   --exclude terraform/.terraform \
   --exclude 'terraform/terraform.tfstate*' \
   --exclude .DS_Store \
+  --exclude '/.env' \
   "$SCRIPT_DIR/" "root@$IP:$REMOTE_DIR"
 
 echo "==> Writing top-level .env for Compose variable interpolation..."
 echo "    (env_file: ./hermes_home/.env only feeds the hermes container's own runtime,"
 echo "     it does NOT feed \${...} substitution used elsewhere in docker-compose.yml)"
-ssh_do bash -s <<REMOTE
-set -euo pipefail
-cd $REMOTE_DIR
+DOCKER_GID="$(ssh_do "getent group docker | cut -d: -f3")"
+DASHBOARD_USERNAME_LINE="$(ssh_do "grep '^HERMES_DASHBOARD_BASIC_AUTH_USERNAME=' $REMOTE_DIR/hermes_home/.env")"
+API_SERVER_KEY_LINE="$(ssh_do "grep '^API_SERVER_KEY=' $REMOTE_DIR/hermes_home/.env")"
+
+# web-admin's portal login (src/lib/auth.ts) signs its session cookie with
+# this secret and throws if it's unset -- reuse whatever's already on the
+# droplet so redeploys don't invalidate every existing portal session;
+# only generate a fresh one the first time.
+PORTAL_SESSION_SECRET="$(ssh_do "grep '^PORTAL_SESSION_SECRET=' $REMOTE_DIR/.env 2>/dev/null | cut -d= -f2-" || true)"
+if [[ -z "$PORTAL_SESSION_SECRET" ]]; then
+  echo "    Generating a new PORTAL_SESSION_SECRET (none found on droplet yet)..."
+  PORTAL_SESSION_SECRET="$(openssl rand -base64 32)"
+fi
+
+# Assembled and escaped locally, then piped as raw bytes into `cat` on the
+# remote -- nothing here is re-parsed by a shell, local or remote, so
+# special characters in any value can't break the script. Compose's .env
+# loader re-interpolates ${...}/$VAR references *inside* .env values, so an
+# unescaped $ (e.g. a password that happens to look like the scrypt hash's
+# `scrypt$16384$8$1$...` format) would otherwise get silently mangled rather
+# than erroring -- Compose's own escape for a literal $ is $$.
 {
-  echo "DOCKER_GID=\$(getent group docker | cut -d: -f3)"
-  grep '^API_SERVER_KEY=' hermes_home/.env
-} > .env
-chmod 600 .env
-REMOTE
+  printf 'DOCKER_GID=%s\n' "$DOCKER_GID"
+  printf '%s\n' "${API_SERVER_KEY_LINE//\$/\$\$}"
+  printf '%s\n' "${DASHBOARD_USERNAME_LINE//\$/\$\$}"
+  printf 'HERMES_DASHBOARD_BASIC_AUTH_PASSWORD=%s\n' "${HERMES_DASHBOARD_PASSWORD//\$/\$\$}"
+  printf 'PORTAL_SESSION_SECRET=%s\n' "${PORTAL_SESSION_SECRET//\$/\$\$}"
+} | ssh_do "cat > $REMOTE_DIR/.env && chmod 600 $REMOTE_DIR/.env"
 
 echo "==> Fixing hermes_home ownership (container runs as uid $HERMES_UID; rsync leaves it owned by your local user)..."
 ssh_do "chown -R $HERMES_UID:$HERMES_UID $REMOTE_DIR/hermes_home"

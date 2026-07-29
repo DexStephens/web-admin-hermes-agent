@@ -1,4 +1,5 @@
 import { test, expect } from "@playwright/test";
+import { loginAsAdmin } from "../helpers/login";
 
 // STORY-UI1: As an admin, I want a web dashboard to monitor the agent's
 // activity. Acceptance: dashboard loads successfully, displaying clear
@@ -8,6 +9,10 @@ import { test, expect } from "@playwright/test";
 // UX contract.
 
 test.describe("STORY-UI1: admin portal loads with clear navigation", () => {
+  test.beforeEach(async ({ page }) => {
+    await loginAsAdmin(page);
+  });
+
   test("portal loads and shows nav for chat history, usage, skills, pairing", async ({
     page,
   }) => {
