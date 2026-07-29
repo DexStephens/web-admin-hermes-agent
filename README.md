@@ -2,8 +2,6 @@
 
 A multi-agent AI assistant built on the [Hermes](https://github.com/NousResearch/Hermes) agent framework (Telegram + email I/O, GHL CRM and bookkeeping sub-agents, persistent memory) paired with a Next.js admin portal for non-technical operators, deployed to a single DigitalOcean droplet via Terraform + Docker Compose.
 
-See [DEPLOYMENT.md](./DEPLOYMENT.md) for the full architecture diagram and a step-by-step walkthrough of `terraform apply` → `./deploy.sh` → a running stack.
-
 ## Overview
 
 The repo is three pieces glued together by `docker-compose.yml`:
