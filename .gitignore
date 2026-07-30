@@ -4,26 +4,26 @@ hermes_home/*
 !hermes_home/SOUL.md
 
 # Keep these directories
-# (hermes_home/cron/ is deliberately NOT kept — it's runtime state: a
-# sqlite job-execution db, lock files, heartbeats, and per-run output dumps
-# that mutate every cron tick, not source-controlled config. Same category
-# as hermes_home/logs/, which is already covered by the blanket ignore
-# above and never whitelisted here.)
 !hermes_home/memories/
 !hermes_home/profiles/
 !hermes_home/hooks/
 !hermes_home/skills/
+!hermes_home/scripts/
+!hermes_home/cron/
 
 # Ignore everything inside them by default
 hermes_home/memories/*
 hermes_home/profiles/*
 hermes_home/hooks/*
 hermes_home/skills/*
+hermes_home/scripts/*
+hermes_home/cron/*
 
 # Re-include everything in these directories
 !hermes_home/memories/**
 !hermes_home/profiles/**
 !hermes_home/hooks/**
+!hermes_home/scripts/**
 
 # Lock files written by the memory store at runtime — not source content
 hermes_home/memories/*.lock
@@ -32,6 +32,15 @@ hermes_home/memories/*.lock
 # (Assuming bundled skills are in a known subdirectory)
 !hermes_home/skills/custom/**
 skills/default/**
+
+# hermes_home/cron/ is mostly runtime state: a sqlite job-execution db,
+# lock files, heartbeats, and per-run output dumps that mutate every cron
+# tick — none of that is source-controlled config, same category as
+# hermes_home/logs/ (already covered by the blanket ignore above and never
+# whitelisted). jobs.json is the one file in there that IS real config (job
+# definitions, schedules, and pre-check script wiring), so it's the only
+# thing pulled back out of the ignore.
+!hermes_home/cron/jobs.json
 
 __pycache__/
 *.pyc
