@@ -58,6 +58,21 @@ echo "==> Waiting for cloud-init to finish..."
 ssh_do cloud-init status --wait
 
 echo "==> Syncing repo to $REMOTE_DIR..."
+# hermes_home/ is bind-mounted into the running container, which keeps
+# writing to it the whole time it's up: session/usage history, caches,
+# gateway and pairing state, sandbox scratch dirs. rsync has no concept of
+# "server-owned" -- it just makes the remote match local -- so without these
+# excludes a redeploy silently overwrites weeks of live state (including the
+# state.db the usage dashboard reads its cost totals from) with whatever's
+# in your local checkout, which is often a stale snapshot from the last time
+# you pulled it down to edit config. Excludes below mirror the config-vs-
+# runtime-state split already encoded in .gitignore: only config.yaml,
+# SOUL.md, memories/, profiles/, hooks/, skills/ (minus its usage sidecar),
+# scripts/, plugins/, cron/jobs.json, secrets/, and hermes_home/.env flow
+# from local -> server. Everything else here is server-owned runtime state,
+# or (lazy-packages/, bin/, sandboxes/, .cache/) locally-built/platform-
+# specific artifacts that would be actively wrong to ship to the droplet's
+# Linux container from a macOS laptop.
 rsync -avz -e "ssh ${SSH_OPTS[*]}" \
   --exclude .git \
   --exclude node_modules \
@@ -66,6 +81,49 @@ rsync -avz -e "ssh ${SSH_OPTS[*]}" \
   --exclude 'terraform/terraform.tfstate*' \
   --exclude .DS_Store \
   --exclude '/.env' \
+  --exclude 'hermes_home/state.db' \
+  --exclude 'hermes_home/state/' \
+  --exclude 'hermes_home/sessions/' \
+  --exclude 'hermes_home/kanban.db' \
+  --exclude 'hermes_home/kanban.db.*.lock' \
+  --exclude 'hermes_home/kanban/' \
+  --exclude 'hermes_home/projects.db' \
+  --exclude 'hermes_home/response_store.db' \
+  --exclude 'hermes_home/cron/executions.db' \
+  --exclude 'hermes_home/cron/.jobs.lock' \
+  --exclude 'hermes_home/cron/.tick.lock' \
+  --exclude 'hermes_home/cron/ticker_heartbeat' \
+  --exclude 'hermes_home/cron/ticker_last_success' \
+  --exclude 'hermes_home/cron/output/' \
+  --exclude 'hermes_home/cache/' \
+  --exclude 'hermes_home/.cache/' \
+  --exclude 'hermes_home/audio_cache/' \
+  --exclude 'hermes_home/image_cache/' \
+  --exclude 'hermes_home/lazy-packages/' \
+  --exclude 'hermes_home/*_cache.json' \
+  --exclude 'hermes_home/.skills_prompt_snapshot.json' \
+  --exclude 'hermes_home/skills/.usage.json*' \
+  --exclude 'hermes_home/gateway/' \
+  --exclude 'hermes_home/gateway_state.json' \
+  --exclude 'hermes_home/gateway-starts.log' \
+  --exclude 'hermes_home/gateway.lock' \
+  --exclude 'hermes_home/channel_directory.json' \
+  --exclude 'hermes_home/platforms/' \
+  --exclude 'hermes_home/pairing/' \
+  --exclude 'hermes_home/auth.json' \
+  --exclude 'hermes_home/auth.lock' \
+  --exclude 'hermes_home/bin/' \
+  --exclude 'hermes_home/sandboxes/' \
+  --exclude 'hermes_home/home/' \
+  --exclude 'hermes_home/.local/' \
+  --exclude 'hermes_home/workspace/' \
+  --exclude 'hermes_home/plans/' \
+  --exclude 'hermes_home/skins/' \
+  --exclude 'hermes_home/backups/' \
+  --exclude 'hermes_home/logs/' \
+  --exclude 'hermes_home/.clean_shutdown' \
+  --exclude 'hermes_home/.update_check' \
+  --exclude 'hermes_home/config.yaml.bak.*' \
   "$SCRIPT_DIR/" "root@$IP:$REMOTE_DIR"
 
 echo "==> Writing top-level .env for Compose variable interpolation..."
